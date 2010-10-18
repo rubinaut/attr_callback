@@ -1,8 +1,10 @@
 # -*- encoding: utf-8 -*-
+$LOAD_PATH.unshift "lib"
+require 'attr_callback/version'
 
 Gem::Specification.new do |s|
   s.name = "attr_callback"
-  s.version = File.read("VERSION").strip
+  s.version = AttrCallback::VERSION
   s.platform = Gem::Platform::RUBY
   s.authors = ["Dwayne Litzenberger"]
   s.email = ["dlitz@infonium.ca"]

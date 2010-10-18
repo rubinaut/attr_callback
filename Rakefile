@@ -1,3 +1,7 @@
+# -*- encoding: utf-8 -*-
+$LOAD_PATH.unshift "lib"
+require 'attr_callback/version'
+
 require 'rake/rdoctask'
 Rake::RDocTask.new do |t|
   t.rdoc_files = Dir.glob(%w( README* MIT-LICENSE lib/**/*.rb *.rdoc )).uniq
@@ -14,3 +18,9 @@ end
 task :build do
   system "gem build attr_callback.gemspec"
 end
+
+task :clobber do
+  rm_f "attr_callback-#{AttrCallback::VERSION}.gem"
+end
+
+task :default => :build
