@@ -18,8 +18,8 @@ module AttrCallback
 
       def define_callback_on_class(klass, name, options={})
         name = name.to_sym
-        locking = options[:lock]
-        noop = options[:noop]
+        locking = options[:lock].nil? ? true : options[:lock]
+        noop = options[:noop].nil? ? true : options[:noop]
 
         # Define the setter.  If the user specified :lock=>true, then the
         # setter will synchronize on @name_lock; otherwise, we just use
