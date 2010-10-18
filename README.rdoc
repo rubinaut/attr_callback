@@ -1,0 +1,31 @@
+= attr_callback - Convenience method for providing user-definable callbacks.
+
+The attr_callback gem lets you conveniently create user-definable callback
+method attributes, using a single line of code.
+
+= Example Usage
+
+  require 'attr_callback'
+
+  class Foo
+    attr_callback :on_receive_message
+  end
+
+  f = Foo.new
+
+  # Getter and setter behave the same as they would using attr_attribute
+  f.on_receive_message = 1                           #=> 1
+  f.on_receive_message                               #=> 1
+
+  # Passing a block to the getter makes it behave as a setter
+  f.on_receive_message { |msg| puts msg }            #=> #<Proc:0x0006bfd0@(irb):1>
+  f.on_receive_message                               #=> #<Proc:0x0006bfd0@(irb):1>
+
+  # Invoking the callback
+  f.on_receive_message.call("hello world")
+
+= License
+
+Copyright © 2010 Infonium Inc.
+
+License: See the MIT-LICENSE file.
