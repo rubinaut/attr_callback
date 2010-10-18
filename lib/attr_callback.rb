@@ -15,6 +15,46 @@ module AttrCallback
           mutex
         end
       end
+
+      def define_callback_on_class(klass, name, options={})
+        name = name.to_sym
+        locking = options[:lock]
+        noop = options[:noop]
+
+        # Define the setter.  If the user specified :lock=>true, then the
+        # setter will synchronize on @name_lock; otherwise, we just use
+        # the standard attr_writer.
+        if locking
+          klass.__send__(:define_method, "#{name}=") do |value|
+            AttrCallback::Util.get_or_create_mutex(self, name).synchronize {
+              instance_variable_set("@#{name}", value)
+            }
+          end
+        else
+          klass.__send__(:attr_writer, name)
+        end
+
+        # Define the getter.  If the user specified :lock=>true, then the
+        # getter will synchronize on @name_lock; otherwise, it won't.
+        klass.__send__(:define_method, name) do |*args, &block|
+          raise ArgumentError, "wrong number of arguments (#{args.length} for 0)" unless args.empty?
+
+          if block.nil?
+            if locking
+              callback = AttrCallback::Util.get_or_create_mutex(self, name).synchronize { instance_variable_get("@#{name}") }
+            else
+              callback = instance_variable_get("@#{name}")
+            end
+            if noop and callback.nil?
+              NoopProc
+            else
+              callback
+            end
+          else
+            __send__("#{name}=", block)
+          end
+        end
+      end
     end
   end
 
@@ -27,47 +67,12 @@ module AttrCallback
         options = {}
       end
 
-      # Options
-      locking = options[:lock]
-      noop = options[:noop]
-
       for name in args
-        # Define the setter.  If the user specified :lock=>true, then the
-        # setter will synchronize on @name_lock; otherwise, we just use
-        # the standard attr_writer.
-        if locking
-          define_method("#{name}=") do |value|
-            AttrCallback::Util.get_or_create_mutex(self, name).synchronize {
-              instance_variable_set("@#{name}", value)
-            }
-          end
-        else
-          attr_writer name
-        end
-
-        # Define the getter.  If the user specified :lock=>true, then the
-        # getter will synchronize on @name_lock; otherwise, it won't.
-        define_method(name) do |*args, &block|
-          raise ArgumentError, "wrong number of arguments (#{args.length} for 0)" unless args.empty?
-
-          if block.nil?
-            if locking
-              callback = AttrCallback::Util.get_or_create_mutex(self, name).synchronize { instance_variable_get("@#{name}") }
-            else
-              callback = instance_variable_get("@#{name}")
-            end
-            if noop and callback.nil?
-              AttrCallback::Util::NoopProc
-            else
-              callback
-            end
-          else
-            __send__("#{name}=", block)
-          end
-        end
+        AttrCallback::Util.define_callback_on_class(self, name, options)
       end
     end
   end
+
 end
 
 class Module
