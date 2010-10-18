@@ -5,6 +5,8 @@ method attributes, using a single line of code.
 
 = Example Usage
 
+You can use attr_callback to define a callback attribute on an object:
+
   require 'attr_callback'
 
   class Foo
@@ -23,6 +25,10 @@ method attributes, using a single line of code.
 
   # Invoking the callback
   f.on_receive_message.call("hello world")
+
+You can also specify the :lock=>true option, in which case a Mutex object will
+be used to guard access to the callback.  This Mutex is created the first time
+the attribute is accessed.
 
 = License
 

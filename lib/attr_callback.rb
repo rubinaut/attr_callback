@@ -3,13 +3,59 @@ module AttrCallback
     base.extend(ClassMethods)
   end
 
+  module Util
+    module NoopMutex
+      def self.synchronize
+        yield
+      end
+    end
+
+    class <<self
+      def get_or_create_mutex(obj, name)
+        mutex = obj.instance_variable_get("@#{name}_lock")
+        if mutex.nil?
+          obj.instance_variable_set("@#{name}_lock", Mutex.new)
+        else
+          mutex
+        end
+      end
+    end
+  end
+
   module ClassMethods
     def attr_callback(*args)
+      # Last argument may be a hash of options.
+      if args[-1].is_a?(Hash)
+        options = args.pop
+      else
+        options = {}
+      end
+
+      # Options
+      locking = options[:lock]
+
       for name in args
-        attr_writer name
+        # Define the setter.  If the user specified :lock=>true, then the
+        # setter will synchronize on @name_lock; otherwise, we just use
+        # the standard attr_writer.
+        if locking
+          define_method("#{name}=") do |value|
+            AttrCallback::Util.get_or_create_mutex(self, name).synchronize {
+              instance_variable_set("@#{name}", value)
+            }
+          end
+        else
+          attr_writer name
+        end
+
+        # Define the getter.  If the user specified :lock=>true, then the
+        # getter will synchronize on @name_lock; otherwise, it won't.
         define_method(name) do |*args, &block|
           raise ArgumentError, "wrong number of arguments (#{args.length} for 0)" unless args.empty?
-          if block.nil?
+
+          if block.nil? && locking
+            AttrCallback::Util.get_or_create_mutex(self, name).synchronize { instance_variable_get("@#{name}") }
+          elsif block.nil?
             instance_variable_get("@#{name}")
           else
             __send__("#{name}=", block)
