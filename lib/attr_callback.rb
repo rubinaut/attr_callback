@@ -4,11 +4,7 @@ module AttrCallback
   end
 
   module Util
-    module NoopMutex
-      def self.synchronize
-        yield
-      end
-    end
+    NoopProc = Proc.new{}
 
     class <<self
       def get_or_create_mutex(obj, name)
@@ -33,6 +29,7 @@ module AttrCallback
 
       # Options
       locking = options[:lock]
+      noop = options[:noop]
 
       for name in args
         # Define the setter.  If the user specified :lock=>true, then the
@@ -53,10 +50,17 @@ module AttrCallback
         define_method(name) do |*args, &block|
           raise ArgumentError, "wrong number of arguments (#{args.length} for 0)" unless args.empty?
 
-          if block.nil? && locking
-            AttrCallback::Util.get_or_create_mutex(self, name).synchronize { instance_variable_get("@#{name}") }
-          elsif block.nil?
-            instance_variable_get("@#{name}")
+          if block.nil?
+            if locking
+              callback = AttrCallback::Util.get_or_create_mutex(self, name).synchronize { instance_variable_get("@#{name}") }
+            else
+              callback = instance_variable_get("@#{name}")
+            end
+            if noop and callback.nil?
+              AttrCallback::Util::NoopProc
+            else
+              callback
+            end
           else
             __send__("#{name}=", block)
           end
